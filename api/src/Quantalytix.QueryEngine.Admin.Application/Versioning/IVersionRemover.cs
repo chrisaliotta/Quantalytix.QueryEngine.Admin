@@ -1,24 +1,24 @@
 namespace Quantalytix.QueryEngine.Admin.Application.Versioning;
 
 /// <summary>
-/// Deletes one kind's versions with their content, and an identity that no snapshot holds a version of any more. Deleting a snapshot
-/// removes its versions; restore removes the live version of an identity the restored snapshot lacks. Each versioned module
-/// implements one.
+/// Deletes one kind's versions with their content, and identities that no snapshot holds a version of any more, one statement per
+/// table for all of them. Deleting a snapshot removes its versions; restore removes the live versions of identities the restored
+/// snapshot lacks. Each versioned module implements one.
 /// </summary>
 public interface IVersionRemover
 {
     /// <summary>The <c>SnapshotKind</c> the remover serves.</summary>
     string Kind { get; }
 
-    /// <summary>Deletes a version and every content row it owns.</summary>
-    /// <param name="versionId">The version.</param>
+    /// <summary>Deletes versions and every content row they own.</summary>
+    /// <param name="versionIds">The versions.</param>
     /// <param name="cancellationToken">Cancels the deletes.</param>
     /// <returns>A task that completes when the rows are gone.</returns>
-    Task RemoveVersionAsync(long versionId, CancellationToken cancellationToken);
+    Task RemoveVersionsAsync(IReadOnlyCollection<long> versionIds, CancellationToken cancellationToken);
 
-    /// <summary>Deletes an identity row and the rows it owns outside its versions; it holds no version.</summary>
-    /// <param name="identityId">The identity.</param>
+    /// <summary>Deletes identity rows and the rows they own outside their versions; they hold no version.</summary>
+    /// <param name="identityIds">The identities.</param>
     /// <param name="cancellationToken">Cancels the deletes.</param>
     /// <returns>A task that completes when the rows are gone.</returns>
-    Task RemoveIdentityAsync(long identityId, CancellationToken cancellationToken);
+    Task RemoveIdentitiesAsync(IReadOnlyCollection<long> identityIds, CancellationToken cancellationToken);
 }

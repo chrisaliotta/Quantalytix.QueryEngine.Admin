@@ -43,18 +43,18 @@ public sealed class BridgeStore(
             CreatedAt = time.GetUtcNow().UtcDateTime
         };
         await versions.InsertAsync(version, cancellationToken);
-        if (cloneFromVersionId is { } sourceVersionId) await CopyMappingsAsync(sourceVersionId, version.BridgeVersionId, cancellationToken);
+        if (cloneFromVersionId is { } sourceVersionId)
+            await CopyMappingsAsync(new Dictionary<long, long> { [sourceVersionId] = version.BridgeVersionId }, cancellationToken);
         return new BridgeCreated { BridgeId = bridge.BridgeId, VersionId = version.BridgeVersionId };
     }
 
-    /// <summary>Copies a version's mappings into another stored version under new ids.</summary>
-    /// <param name="sourceVersionId">The version whose mappings are copied.</param>
-    /// <param name="targetVersionId">The version that receives them, without mappings.</param>
+    /// <summary>Copies versions' mappings into other stored versions under new ids, with one read and one write.</summary>
+    /// <param name="targets">The version that receives each copied version's mappings; it has none yet.</param>
     /// <param name="cancellationToken">Cancels the read and the write.</param>
     /// <returns>A task that completes when the copies are written.</returns>
-    public async Task CopyMappingsAsync(long sourceVersionId, long targetVersionId, CancellationToken cancellationToken)
+    public async Task CopyMappingsAsync(IReadOnlyDictionary<long, long> targets, CancellationToken cancellationToken)
     {
-        var copied = await mappings.ListAsync(new { BridgeVersionId = sourceVersionId }, cancellationToken);
-        await mappings.InsertManyAsync([.. copied.Select(mapping => mapping with { BridgeMappingId = ids.NextId(), BridgeVersionId = targetVersionId })], cancellationToken);
+        var copied = await mappings.ListAsync(new { BridgeVersionId = targets.Keys.ToArray() }, cancellationToken);
+        await mappings.InsertManyAsync([.. copied.Select(mapping => mapping with { BridgeMappingId = ids.NextId(), BridgeVersionId = targets[mapping.BridgeVersionId] })], cancellationToken);
     }
 }

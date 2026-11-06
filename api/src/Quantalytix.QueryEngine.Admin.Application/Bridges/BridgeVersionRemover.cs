@@ -4,7 +4,7 @@ using Quantalytix.QueryEngine.Admin.Application.Versioning;
 
 namespace Quantalytix.QueryEngine.Admin.Application.Bridges;
 
-/// <summary>Hard-deletes bridge versions, their mappings first, and a bridge once no snapshot holds a version of it.</summary>
+/// <summary>Hard-deletes bridge versions, their mappings first, and bridges once no snapshot holds a version of them.</summary>
 public sealed class BridgeVersionRemover(
     ITableGateway<BridgeRecord> bridges,
     ITableGateway<BridgeVersionRecord> versions,
@@ -13,22 +13,22 @@ public sealed class BridgeVersionRemover(
     /// <summary><c>bridge</c>.</summary>
     public string Kind => SnapshotKinds.Bridge;
 
-    /// <summary>Deletes a version's mappings, then the version.</summary>
-    /// <param name="versionId">The bridge version.</param>
+    /// <summary>Deletes the versions' mappings, then the versions.</summary>
+    /// <param name="versionIds">The bridge versions.</param>
     /// <param name="cancellationToken">Cancels the remaining statement.</param>
     /// <returns>A task that completes when the rows are gone.</returns>
-    public async Task RemoveVersionAsync(long versionId, CancellationToken cancellationToken)
+    public async Task RemoveVersionsAsync(IReadOnlyCollection<long> versionIds, CancellationToken cancellationToken)
     {
-        await mappings.DeleteAsync(new { BridgeVersionId = versionId }, cancellationToken);
-        await versions.DeleteAsync(new { BridgeVersionId = versionId }, cancellationToken);
+        await mappings.DeleteAsync(new { BridgeVersionId = versionIds }, cancellationToken);
+        await versions.DeleteAsync(new { BridgeVersionId = versionIds }, cancellationToken);
     }
 
-    /// <summary>Deletes a bridge row.</summary>
-    /// <param name="identityId">The bridge.</param>
+    /// <summary>Deletes bridge rows.</summary>
+    /// <param name="identityIds">The bridges.</param>
     /// <param name="cancellationToken">Cancels the delete.</param>
-    /// <returns>A task that completes when the row is gone.</returns>
-    public async Task RemoveIdentityAsync(long identityId, CancellationToken cancellationToken)
+    /// <returns>A task that completes when the rows are gone.</returns>
+    public async Task RemoveIdentitiesAsync(IReadOnlyCollection<long> identityIds, CancellationToken cancellationToken)
     {
-        await bridges.DeleteAsync(new { BridgeId = identityId }, cancellationToken);
+        await bridges.DeleteAsync(new { BridgeId = identityIds }, cancellationToken);
     }
 }

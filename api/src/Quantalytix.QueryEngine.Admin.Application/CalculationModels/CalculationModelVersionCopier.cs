@@ -31,38 +31,39 @@ public sealed class CalculationModelVersionCopier(
     /// <summary><c>calculation_model</c>.</summary>
     public string Kind => SnapshotKinds.CalculationModel;
 
-    /// <summary>Copies a version into a snapshot, as a new version or over another version of the model.</summary>
-    /// <param name="versionId">The version to copy.</param>
-    /// <param name="targetSnapshotId">The snapshot the copy belongs to.</param>
-    /// <param name="targetVersionId">The version whose settings and content the copy replaces, or null for a new version.</param>
+    /// <summary>Copies versions into a snapshot, each as a new version or over another version of its model.</summary>
+    /// <param name="copies">The versions to copy, each with the version whose settings and content it replaces, if any.</param>
+    /// <param name="targetSnapshotId">The snapshot the copies belong to.</param>
     /// <param name="cancellationToken">Cancels the reads and writes.</param>
-    /// <returns>The copy's id.</returns>
-    public async Task<long> CopyAsync(long versionId, long targetSnapshotId, long? targetVersionId, CancellationToken cancellationToken)
+    /// <returns>The copies' ids.</returns>
+    public async Task<IReadOnlyList<long>> CopyAsync(IReadOnlyList<VersionCopy> copies, long targetSnapshotId, CancellationToken cancellationToken)
     {
-        var source = await versions.GetAsync(new { CalculationModelVersionId = versionId }, cancellationToken);
-        var copy = source with { CalculationModelVersionId = targetVersionId ?? ids.NextId(), SnapshotId = targetSnapshotId, CreatedAt = time.GetUtcNow().UtcDateTime };
-        if (targetVersionId is { } target)
-        {
-            await remover.RemoveContentAsync(target, cancellationToken);
-            await versions.UpdateAsync(copy, cancellationToken);
-        }
-        else
-        {
-            await versions.InsertAsync(copy, cancellationToken);
-        }
+        var batch = new VersionCopyBatch(copies, ids);
+        var now = time.GetUtcNow().UtcDateTime;
+        var owner = new { CalculationModelVersionId = batch.SourceIds };
+        var sources = await versions.ListAsync(owner, cancellationToken);
+        await remover.RemoveContentAsync(batch.ReplacedIds, cancellationToken);
+        await versions.InsertManyAsync(
+            [.. sources.Select(source => source with { CalculationModelVersionId = batch.Targets[source.CalculationModelVersionId], SnapshotId = targetSnapshotId, CreatedAt = now })],
+            cancellationToken);
 
-        var owner = new { CalculationModelVersionId = versionId };
-        var copyId = copy.CalculationModelVersionId;
+        var targets = batch.Targets;
         await variables.InsertManyAsync(
-            [.. (await variables.ListAsync(owner, cancellationToken)).Select(row => row with { VariableId = ids.NextId(), CalculationModelVersionId = copyId })],
+            [.. (await variables.ListAsync(owner, cancellationToken)).Select(row => row with { VariableId = ids.NextId(), CalculationModelVersionId = targets[row.CalculationModelVersionId] })],
             cancellationToken);
         await measures.InsertManyAsync(
-            [.. (await measures.ListAsync(owner, cancellationToken)).Select(row => row with { CalculatedMeasureId = ids.NextId(), CalculationModelVersionId = copyId })],
+            [.. (await measures.ListAsync(owner, cancellationToken)).Select(row => row with { CalculatedMeasureId = ids.NextId(), CalculationModelVersionId = targets[row.CalculationModelVersionId] })],
             cancellationToken);
-        await parameters.InsertManyAsync([.. (await parameters.ListAsync(owner, cancellationToken)).Select(row => row with { CalculationModelVersionId = copyId })], cancellationToken);
-        await attributions.InsertManyAsync([.. (await attributions.ListAsync(owner, cancellationToken)).Select(row => row with { CalculationModelVersionId = copyId })], cancellationToken);
-        await drivers.InsertManyAsync([.. (await drivers.ListAsync(owner, cancellationToken)).Select(row => row with { CalculationModelVersionId = copyId })], cancellationToken);
-        return copyId;
+        await parameters.InsertManyAsync(
+            [.. (await parameters.ListAsync(owner, cancellationToken)).Select(row => row with { CalculationModelVersionId = targets[row.CalculationModelVersionId] })],
+            cancellationToken);
+        await attributions.InsertManyAsync(
+            [.. (await attributions.ListAsync(owner, cancellationToken)).Select(row => row with { CalculationModelVersionId = targets[row.CalculationModelVersionId] })],
+            cancellationToken);
+        await drivers.InsertManyAsync(
+            [.. (await drivers.ListAsync(owner, cancellationToken)).Select(row => row with { CalculationModelVersionId = targets[row.CalculationModelVersionId] })],
+            cancellationToken);
+        return batch.CopyIds;
     }
 
     /// <summary>The version's settings and content: variables, calculated measures, parameters, attributions and drivers, all by key.</summary>

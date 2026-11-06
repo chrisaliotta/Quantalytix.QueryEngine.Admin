@@ -28,23 +28,23 @@ public sealed class ReportVersionRemover(
     /// <summary><c>report</c>.</summary>
     public string Kind => SnapshotKinds.Report;
 
-    /// <summary>Deletes a version's content, then the version.</summary>
-    /// <param name="versionId">The report version.</param>
+    /// <summary>Deletes the versions' content, then the versions.</summary>
+    /// <param name="versionIds">The report versions.</param>
     /// <param name="cancellationToken">Cancels the deletes.</param>
     /// <returns>A task that completes when the rows are gone.</returns>
-    public async Task RemoveVersionAsync(long versionId, CancellationToken cancellationToken)
+    public async Task RemoveVersionsAsync(IReadOnlyCollection<long> versionIds, CancellationToken cancellationToken)
     {
-        await RemoveContentAsync(versionId, cancellationToken);
-        await versions.DeleteAsync(new { ReportVersionId = versionId }, cancellationToken);
+        await RemoveContentAsync(versionIds, cancellationToken);
+        await versions.DeleteAsync(new { ReportVersionId = versionIds }, cancellationToken);
     }
 
-    /// <summary>Deletes a version's content and keeps the version row, which a copy then fills again.</summary>
-    /// <param name="versionId">The report version.</param>
+    /// <summary>Deletes the versions' content and keeps the version rows, which a copy then fills again.</summary>
+    /// <param name="versionIds">The report versions.</param>
     /// <param name="cancellationToken">Cancels the deletes.</param>
     /// <returns>A task that completes when the content is gone.</returns>
-    public async Task RemoveContentAsync(long versionId, CancellationToken cancellationToken)
+    public async Task RemoveContentAsync(IReadOnlyCollection<long> versionIds, CancellationToken cancellationToken)
     {
-        var owner = new { ReportVersionId = versionId };
+        var owner = new { ReportVersionId = versionIds };
         long[] sourceIds = [.. (await sources.ListAsync(owner, cancellationToken)).Select(source => source.ReportSourceId)];
         long[] profileIds = [.. (await profiles.ListAsync(owner, cancellationToken)).Select(profile => profile.CalculationSourceProfileId)];
         await picks.DeleteAsync(new { CalculationSourceProfileId = profileIds }, cancellationToken);
@@ -62,12 +62,12 @@ public sealed class ReportVersionRemover(
         await styles.DeleteAsync(owner, cancellationToken);
     }
 
-    /// <summary>Deletes a report row.</summary>
-    /// <param name="identityId">The report.</param>
+    /// <summary>Deletes report rows.</summary>
+    /// <param name="identityIds">The reports.</param>
     /// <param name="cancellationToken">Cancels the delete.</param>
-    /// <returns>A task that completes when the row is gone.</returns>
-    public async Task RemoveIdentityAsync(long identityId, CancellationToken cancellationToken)
+    /// <returns>A task that completes when the rows are gone.</returns>
+    public async Task RemoveIdentitiesAsync(IReadOnlyCollection<long> identityIds, CancellationToken cancellationToken)
     {
-        await reports.DeleteAsync(new { ReportId = identityId }, cancellationToken);
+        await reports.DeleteAsync(new { ReportId = identityIds }, cancellationToken);
     }
 }

@@ -95,8 +95,8 @@ public sealed class ReportBridges(
     public async Task DeleteAsync(long bridgeId, CancellationToken cancellationToken)
     {
         var liveVersion = await LiveAsync(bridgeId, cancellationToken);
-        await remover.RemoveVersionAsync(liveVersion.BridgeVersionId, cancellationToken);
-        if ((await versions.ListAsync(new { BridgeId = bridgeId }, cancellationToken)).Count == 0) await remover.RemoveIdentityAsync(bridgeId, cancellationToken);
+        await remover.RemoveVersionsAsync([liveVersion.BridgeVersionId], cancellationToken);
+        if ((await versions.ListAsync(new { BridgeId = bridgeId }, cancellationToken)).Count == 0) await remover.RemoveIdentitiesAsync([bridgeId], cancellationToken);
     }
 
     /// <summary>The live version of a report bridge.</summary>

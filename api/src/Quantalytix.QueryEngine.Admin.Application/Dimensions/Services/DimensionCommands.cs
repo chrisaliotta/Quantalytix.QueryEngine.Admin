@@ -95,8 +95,8 @@ public sealed class DimensionCommands(
         var check = DimensionDeleteRules.Dimension(snapshot);
         if (!check.Allowed) return Refusal.DeleteBlocked(check);
 
-        await remover.RemoveVersionAsync(snapshot.VersionId, cancellationToken);
-        await remover.RemoveIdentityAsync(dimensionId, cancellationToken);
+        await remover.RemoveVersionsAsync([snapshot.VersionId], cancellationToken);
+        await remover.RemoveIdentitiesAsync([dimensionId], cancellationToken);
         await semanticRevision.AdvanceAsync(cancellationToken);
         return null;
     }

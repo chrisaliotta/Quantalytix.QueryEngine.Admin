@@ -6,7 +6,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Dimensions;
 
 /// <summary>
 /// Hard-deletes dimension versions with everything they own, children before parents: range bands, closure rows, members, levels,
-/// then the versions; and a dimension with its roles once no snapshot holds a version of it.
+/// then the versions; and dimensions with their roles once no snapshot holds a version of them.
 /// </summary>
 public sealed class DimensionVersionRemover(
     ITableGateway<DimensionRecord> dimensions,
@@ -24,7 +24,7 @@ public sealed class DimensionVersionRemover(
     /// <param name="versionIds">The dimension versions.</param>
     /// <param name="cancellationToken">Cancels the remaining statements.</param>
     /// <returns>A task that completes when every row is deleted.</returns>
-    public async Task RemoveAsync(IReadOnlyCollection<long> versionIds, CancellationToken cancellationToken)
+    public async Task RemoveVersionsAsync(IReadOnlyCollection<long> versionIds, CancellationToken cancellationToken)
     {
         await RemoveContentAsync(versionIds, cancellationToken);
         await versions.DeleteAsync(new { DimensionVersionId = versionIds }, cancellationToken);
@@ -42,22 +42,13 @@ public sealed class DimensionVersionRemover(
         await levels.DeleteAsync(new { DimensionVersionId = versionIds }, cancellationToken);
     }
 
-    /// <summary>Deletes one version and its content.</summary>
-    /// <param name="versionId">The dimension version.</param>
+    /// <summary>Deletes the dimensions' roles, then the dimensions.</summary>
+    /// <param name="identityIds">The dimensions.</param>
     /// <param name="cancellationToken">Cancels the deletes.</param>
     /// <returns>A task that completes when the rows are gone.</returns>
-    public Task RemoveVersionAsync(long versionId, CancellationToken cancellationToken)
+    public async Task RemoveIdentitiesAsync(IReadOnlyCollection<long> identityIds, CancellationToken cancellationToken)
     {
-        return RemoveAsync([versionId], cancellationToken);
-    }
-
-    /// <summary>Deletes a dimension's roles, then the dimension.</summary>
-    /// <param name="identityId">The dimension.</param>
-    /// <param name="cancellationToken">Cancels the deletes.</param>
-    /// <returns>A task that completes when the rows are gone.</returns>
-    public async Task RemoveIdentityAsync(long identityId, CancellationToken cancellationToken)
-    {
-        await roles.DeleteAsync(new { DimensionId = identityId }, cancellationToken);
-        await dimensions.DeleteAsync(new { DimensionId = identityId }, cancellationToken);
+        await roles.DeleteAsync(new { DimensionId = identityIds }, cancellationToken);
+        await dimensions.DeleteAsync(new { DimensionId = identityIds }, cancellationToken);
     }
 }

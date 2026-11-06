@@ -32,28 +32,22 @@ public sealed class ReportVersionCopier(
     /// <summary><c>report</c>.</summary>
     public string Kind => SnapshotKinds.Report;
 
-    /// <summary>Copies a version into a snapshot, as a new version or over another version of the report.</summary>
-    /// <param name="versionId">The version to copy.</param>
-    /// <param name="targetSnapshotId">The snapshot the copy belongs to.</param>
-    /// <param name="targetVersionId">The version whose settings and content the copy replaces, or null for a new version.</param>
+    /// <summary>Copies versions into a snapshot, each as a new version or over another version of its report.</summary>
+    /// <param name="copies">The versions to copy, each with the version whose settings and content it replaces, if any.</param>
+    /// <param name="targetSnapshotId">The snapshot the copies belong to.</param>
     /// <param name="cancellationToken">Cancels the reads and writes.</param>
-    /// <returns>The copy's id.</returns>
-    public async Task<long> CopyAsync(long versionId, long targetSnapshotId, long? targetVersionId, CancellationToken cancellationToken)
+    /// <returns>The copies' ids.</returns>
+    public async Task<IReadOnlyList<long>> CopyAsync(IReadOnlyList<VersionCopy> copies, long targetSnapshotId, CancellationToken cancellationToken)
     {
-        var source = await versions.GetAsync(new { ReportVersionId = versionId }, cancellationToken);
-        var copy = source with { ReportVersionId = targetVersionId ?? ids.NextId(), SnapshotId = targetSnapshotId, CreatedAt = time.GetUtcNow().UtcDateTime };
-        if (targetVersionId is { } target)
-        {
-            await remover.RemoveContentAsync(target, cancellationToken);
-            await versions.UpdateAsync(copy, cancellationToken);
-        }
-        else
-        {
-            await versions.InsertAsync(copy, cancellationToken);
-        }
-
-        await CopyContentAsync(versionId, copy.ReportVersionId, cancellationToken);
-        return copy.ReportVersionId;
+        var batch = new VersionCopyBatch(copies, ids);
+        var now = time.GetUtcNow().UtcDateTime;
+        var sources = await versions.ListAsync(new { ReportVersionId = batch.SourceIds }, cancellationToken);
+        await remover.RemoveContentAsync(batch.ReplacedIds, cancellationToken);
+        await versions.InsertManyAsync(
+            [.. sources.Select(source => source with { ReportVersionId = batch.Targets[source.ReportVersionId], SnapshotId = targetSnapshotId, CreatedAt = now })],
+            cancellationToken);
+        await CopyContentAsync(batch.Targets, cancellationToken);
+        return batch.CopyIds;
     }
 
     /// <summary>
@@ -96,37 +90,43 @@ public sealed class ReportVersionCopier(
                 .Select(row => new { row.VariableKey, Profile = profileKeys[row.CalculationSourceProfileId], Source = sourceKeys[row.ReportSourceId] }));
     }
 
-    /// <summary>Copies every content row of a version into another, parents before the rows that reference them.</summary>
-    private async Task CopyContentAsync(long versionId, long copyId, CancellationToken cancellationToken)
+    /// <summary>Copies every content row of each source version into its target, parents before the rows that reference them.</summary>
+    private async Task CopyContentAsync(IReadOnlyDictionary<long, long> targets, CancellationToken cancellationToken)
     {
         var remap = new IdRemap(ids);
-        var owner = new { ReportVersionId = versionId };
+        var owner = new { ReportVersionId = targets.Keys.ToArray() };
         var sourceRows = await sources.ListAsync(owner, cancellationToken);
         var profileRows = await profiles.ListAsync(owner, cancellationToken);
         var sourceFilter = new { ReportSourceId = sourceRows.Select(row => row.ReportSourceId).ToArray() };
 
         await columns.InsertManyAsync(
-            [.. (await columns.ListAsync(owner, cancellationToken)).Select(row => row with { ReportColumnId = remap.Map(row.ReportColumnId), ReportVersionId = copyId })],
+            [.. (await columns.ListAsync(owner, cancellationToken)).Select(row => row with { ReportColumnId = remap.Map(row.ReportColumnId), ReportVersionId = targets[row.ReportVersionId] })],
             cancellationToken);
         await lines.InsertManyAsync(
             [
                 .. (await lines.ListAsync(owner, cancellationToken)).Select(row => row with
                 {
                     ReportLineId = remap.Map(row.ReportLineId),
-                    ReportVersionId = copyId,
+                    ReportVersionId = targets[row.ReportVersionId],
                     ValueReportColumnId = remap.MapOptional(row.ValueReportColumnId)
                 })
             ],
             cancellationToken);
-        await memberOptions.InsertManyAsync([.. (await memberOptions.ListAsync(owner, cancellationToken)).Select(row => row with { ReportVersionId = copyId })], cancellationToken);
-        await rowParameters.InsertManyAsync([.. (await rowParameters.ListAsync(owner, cancellationToken)).Select(row => row with { ReportVersionId = copyId })], cancellationToken);
-        await styles.InsertManyAsync([.. (await styles.ListAsync(owner, cancellationToken)).Select(row => row with { ReportVersionId = copyId })], cancellationToken);
-        await scopes.InsertManyAsync([.. (await scopes.ListAsync(owner, cancellationToken)).Select(row => row with { ReportVersionId = copyId })], cancellationToken);
-        await scenarios.InsertManyAsync([.. (await scenarios.ListAsync(owner, cancellationToken)).Select(row => row with { ReportVersionId = copyId })], cancellationToken);
+        await memberOptions.InsertManyAsync([.. (await memberOptions.ListAsync(owner, cancellationToken)).Select(row => row with { ReportVersionId = targets[row.ReportVersionId] })], cancellationToken);
+        await rowParameters.InsertManyAsync([.. (await rowParameters.ListAsync(owner, cancellationToken)).Select(row => row with { ReportVersionId = targets[row.ReportVersionId] })], cancellationToken);
+        await styles.InsertManyAsync([.. (await styles.ListAsync(owner, cancellationToken)).Select(row => row with { ReportVersionId = targets[row.ReportVersionId] })], cancellationToken);
+        await scopes.InsertManyAsync([.. (await scopes.ListAsync(owner, cancellationToken)).Select(row => row with { ReportVersionId = targets[row.ReportVersionId] })], cancellationToken);
+        await scenarios.InsertManyAsync([.. (await scenarios.ListAsync(owner, cancellationToken)).Select(row => row with { ReportVersionId = targets[row.ReportVersionId] })], cancellationToken);
         await calculationDimensions.InsertManyAsync(
-            [.. (await calculationDimensions.ListAsync(owner, cancellationToken)).Select(row => row with { CalculationDimensionId = remap.Map(row.CalculationDimensionId), ReportVersionId = copyId })],
+            [
+                .. (await calculationDimensions.ListAsync(owner, cancellationToken)).Select(row => row with
+                {
+                    CalculationDimensionId = remap.Map(row.CalculationDimensionId),
+                    ReportVersionId = targets[row.ReportVersionId]
+                })
+            ],
             cancellationToken);
-        await sources.InsertManyAsync([.. sourceRows.Select(row => row with { ReportSourceId = remap.Map(row.ReportSourceId), ReportVersionId = copyId })], cancellationToken);
+        await sources.InsertManyAsync([.. sourceRows.Select(row => row with { ReportSourceId = remap.Map(row.ReportSourceId), ReportVersionId = targets[row.ReportVersionId] })], cancellationToken);
         await sourceVariables.InsertManyAsync(
             [.. (await sourceVariables.ListAsync(sourceFilter, cancellationToken)).Select(row => row with { ReportSourceId = remap.Map(row.ReportSourceId) })],
             cancellationToken);
@@ -134,7 +134,7 @@ public sealed class ReportVersionCopier(
             [.. (await leftOut.ListAsync(sourceFilter, cancellationToken)).Select(row => row with { ReportSourceId = remap.Map(row.ReportSourceId) })],
             cancellationToken);
         await profiles.InsertManyAsync(
-            [.. profileRows.Select(row => row with { CalculationSourceProfileId = remap.Map(row.CalculationSourceProfileId), ReportVersionId = copyId })],
+            [.. profileRows.Select(row => row with { CalculationSourceProfileId = remap.Map(row.CalculationSourceProfileId), ReportVersionId = targets[row.ReportVersionId] })],
             cancellationToken);
         await picks.InsertManyAsync(
             [

@@ -1,4 +1,5 @@
 using Quantalytix.QueryEngine.Admin.Application.Bridges;
+using Quantalytix.QueryEngine.Admin.Application.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 using Quantalytix.QueryEngine.Admin.Tests.Mappings;
 using Quantalytix.QueryEngine.Admin.Tests.Reports;
@@ -92,7 +93,7 @@ public sealed class ReportBridgesTests
     {
         var fixture = new MappingsFixture();
         var cancellationToken = TestContext.Current.CancellationToken;
-        var frozenId = await fixture.BridgeCopier().CopyAsync(MappingsFixture.ReportBridgeVersionId, SnapshotRows.FrozenId, null, cancellationToken);
+        var frozenId = (await fixture.BridgeCopier().CopyAsync([new VersionCopy(MappingsFixture.ReportBridgeVersionId, null)], SnapshotRows.FrozenId, cancellationToken)).Single();
 
         await fixture.ReportBridges().DeleteAsync(MappingsFixture.ReportBridgeId, cancellationToken);
 

@@ -38,7 +38,8 @@ export function createHttpClient(config: HttpConfig, prefix = '/api'): HttpClien
     if (token) headers.set('Authorization', `Bearer ${token}`)
     if (body !== undefined) headers.set('Content-Type', 'application/json')
 
-    const response = await fetch(url, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) })
+    const response = await fetch(url, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) }).catch(() => null)
+    if (!response) return { ok: false, problem: UNREACHABLE }
     if (response.status === 401) config.onUnauthorized()
     if (response.ok) return { ok: true, data: response.status === 204 ? (null as T) : await response.json() }
     return { ok: false, problem: await problemOf(response) }
@@ -52,6 +53,15 @@ export function createHttpClient(config: HttpConfig, prefix = '/api'): HttpClien
     delete: (path) => send('DELETE', path),
     forTenant: (tenantId) => createHttpClient(config, `${prefix}/tenants/${encodeURIComponent(tenantId)}`),
   }
+}
+
+/** A request that got no response at all: the API, or the dev server proxying it, is not running or the network dropped. */
+const UNREACHABLE: Problem = {
+  type: 'about:blank',
+  title: 'The Admin API did not respond',
+  detail: 'Check that the Admin API and the web dev server are running, then try again.',
+  status: 500,
+  errors: {},
 }
 
 /** Gateways and proxies in front of the API can answer without a problem body; those become a title-only Problem. */

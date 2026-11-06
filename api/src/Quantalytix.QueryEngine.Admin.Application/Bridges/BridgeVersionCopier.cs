@@ -20,28 +20,22 @@ public sealed class BridgeVersionCopier(
     /// <summary><c>bridge</c>.</summary>
     public string Kind => SnapshotKinds.Bridge;
 
-    /// <summary>Copies a version into a snapshot, as a new version or over another version of the bridge.</summary>
-    /// <param name="versionId">The version to copy.</param>
-    /// <param name="targetSnapshotId">The snapshot the copy belongs to.</param>
-    /// <param name="targetVersionId">The version whose settings and mappings the copy replaces, or null for a new version.</param>
+    /// <summary>Copies versions into a snapshot, each as a new version or over another version of its bridge.</summary>
+    /// <param name="copies">The versions to copy, each with the version whose settings and mappings it replaces, if any.</param>
+    /// <param name="targetSnapshotId">The snapshot the copies belong to.</param>
     /// <param name="cancellationToken">Cancels the reads and writes.</param>
-    /// <returns>The copy's id.</returns>
-    public async Task<long> CopyAsync(long versionId, long targetSnapshotId, long? targetVersionId, CancellationToken cancellationToken)
+    /// <returns>The copies' ids.</returns>
+    public async Task<IReadOnlyList<long>> CopyAsync(IReadOnlyList<VersionCopy> copies, long targetSnapshotId, CancellationToken cancellationToken)
     {
-        var source = await versions.GetAsync(new { BridgeVersionId = versionId }, cancellationToken);
-        var copy = source with { BridgeVersionId = targetVersionId ?? ids.NextId(), SnapshotId = targetSnapshotId, CreatedAt = time.GetUtcNow().UtcDateTime };
-        if (targetVersionId is { } target)
-        {
-            await mappings.DeleteAsync(new { BridgeVersionId = target }, cancellationToken);
-            await versions.UpdateAsync(copy, cancellationToken);
-        }
-        else
-        {
-            await versions.InsertAsync(copy, cancellationToken);
-        }
-
-        await store.CopyMappingsAsync(versionId, copy.BridgeVersionId, cancellationToken);
-        return copy.BridgeVersionId;
+        var batch = new VersionCopyBatch(copies, ids);
+        var now = time.GetUtcNow().UtcDateTime;
+        var sources = await versions.ListAsync(new { BridgeVersionId = batch.SourceIds }, cancellationToken);
+        await mappings.DeleteAsync(new { BridgeVersionId = batch.ReplacedIds }, cancellationToken);
+        await versions.InsertManyAsync(
+            [.. sources.Select(source => source with { BridgeVersionId = batch.Targets[source.BridgeVersionId], SnapshotId = targetSnapshotId, CreatedAt = now })],
+            cancellationToken);
+        await store.CopyMappingsAsync(batch.Targets, cancellationToken);
+        return batch.CopyIds;
     }
 
     /// <summary>The version's settings and its mappings, each by member keys with its factor, weight and selection.</summary>

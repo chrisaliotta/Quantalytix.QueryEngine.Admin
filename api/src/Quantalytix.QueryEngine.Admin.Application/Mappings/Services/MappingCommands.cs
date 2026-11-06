@@ -68,8 +68,8 @@ public sealed class MappingCommands(
         var check = MappingDeleteRules.Set(snapshot);
         if (!check.Allowed) return Refusal.DeleteBlocked(check);
 
-        await remover.RemoveVersionAsync(snapshot.VersionId, cancellationToken);
-        await remover.RemoveIdentityAsync(mappingSetId, cancellationToken);
+        await remover.RemoveVersionsAsync([snapshot.VersionId], cancellationToken);
+        await remover.RemoveIdentitiesAsync([mappingSetId], cancellationToken);
         await semanticRevision.AdvanceAsync(cancellationToken);
         return null;
     }

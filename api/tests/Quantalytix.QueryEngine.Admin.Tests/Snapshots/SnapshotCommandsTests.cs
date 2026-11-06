@@ -179,15 +179,14 @@ public sealed class SnapshotCommandsTests
         public string Kind => inner.Kind;
 
         /// <summary>Advances the revision, then copies.</summary>
-        /// <param name="versionId">The version to copy.</param>
-        /// <param name="targetSnapshotId">The snapshot the copy lands in.</param>
-        /// <param name="targetVersionId">The version to replace, if any.</param>
+        /// <param name="copies">The versions to copy.</param>
+        /// <param name="targetSnapshotId">The snapshot the copies land in.</param>
         /// <param name="cancellationToken">Cancels the writes.</param>
-        /// <returns>The copy's id.</returns>
-        public async Task<long> CopyAsync(long versionId, long targetSnapshotId, long? targetVersionId, CancellationToken cancellationToken)
+        /// <returns>The copies' ids.</returns>
+        public async Task<IReadOnlyList<long>> CopyAsync(IReadOnlyList<VersionCopy> copies, long targetSnapshotId, CancellationToken cancellationToken)
         {
             await revision.AdvanceAsync(cancellationToken);
-            return await inner.CopyAsync(versionId, targetSnapshotId, targetVersionId, cancellationToken);
+            return await inner.CopyAsync(copies, targetSnapshotId, cancellationToken);
         }
 
         /// <summary>The inner copier's content key.</summary>

@@ -43,9 +43,9 @@ public sealed class ReportRemover(
         if (blockers.Check() is { Allowed: false } check) return Refusal.DeleteBlocked(check);
 
         var bridgeIds = (await sources.ListAsync(new { report.Version.ReportVersionId }, cancellationToken)).Select(source => source.BridgeId).OfType<long>().ToList();
-        await remover.RemoveVersionAsync(report.Version.ReportVersionId, cancellationToken);
+        await remover.RemoveVersionsAsync([report.Version.ReportVersionId], cancellationToken);
         foreach (var bridgeId in bridgeIds) await bridges.DeleteAsync(bridgeId, cancellationToken);
-        await remover.RemoveIdentityAsync(reportId, cancellationToken);
+        await remover.RemoveIdentitiesAsync([reportId], cancellationToken);
         await reportDimensions.RemoveAsync(report.Report.ReportDimensionId, await dimensionVersions.ListAsync(new { DimensionId = report.Report.ReportDimensionId }, cancellationToken), cancellationToken);
         await semanticRevision.AdvanceAsync(cancellationToken);
         return null;

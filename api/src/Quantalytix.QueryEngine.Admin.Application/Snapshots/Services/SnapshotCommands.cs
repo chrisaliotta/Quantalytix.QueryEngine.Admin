@@ -43,13 +43,13 @@ public sealed class SnapshotCommands(
 
         var revision = await RevisionAsync(cancellationToken);
         var snapshotId = ids.NextId();
-        var copies = new List<(string Kind, long VersionId)>();
-        foreach (var entry in SnapshotIndex.Of(await index.ReadAsync(cancellationToken), await live.IdAsync(cancellationToken)))
-            copies.Add((entry.Kind, await Copier(entry.Kind).CopyAsync(entry.VersionId, snapshotId, null, cancellationToken)));
+        var copies = new List<(string Kind, IReadOnlyList<long> VersionIds)>();
+        foreach (var kind in SnapshotIndex.Of(await index.ReadAsync(cancellationToken), await live.IdAsync(cancellationToken)).GroupBy(entry => entry.Kind))
+            copies.Add((kind.Key, await Copier(kind.Key).CopyAsync([.. kind.Select(entry => new VersionCopy(entry.VersionId, null))], snapshotId, cancellationToken)));
 
         if (await RevisionAsync(cancellationToken) != revision)
         {
-            foreach (var (kind, versionId) in copies.AsEnumerable().Reverse()) await Remover(kind).RemoveVersionAsync(versionId, cancellationToken);
+            foreach (var (kind, versionIds) in copies.AsEnumerable().Reverse()) await Remover(kind).RemoveVersionsAsync(versionIds, cancellationToken);
             return Outcome<Snapshot>.Refused(Refusal.Conflict("Live changed during the capture", "Metadata was saved while the snapshot was captured; nothing was captured, so capture again."));
         }
 
@@ -95,14 +95,13 @@ public sealed class SnapshotCommands(
         var liveSnapshotId = await live.IdAsync(cancellationToken);
         var current = SnapshotIndex.Of(holdings, liveSnapshotId).ToDictionary(entry => (entry.Kind, entry.IdentityId));
         var restored = frozen.Select(entry => (entry.Kind, entry.IdentityId)).ToHashSet();
-        foreach (var entry in frozen)
-            await Copier(entry.Kind).CopyAsync(entry.VersionId, liveSnapshotId, current.GetValueOrDefault((entry.Kind, entry.IdentityId))?.VersionId, cancellationToken);
-        var heldElsewhere = holdings.Where(holding => holding.SnapshotId != liveSnapshotId).Select(holding => (holding.Entry.Kind, holding.Entry.IdentityId)).ToHashSet();
-        foreach (var entry in current.Values.Where(entry => !restored.Contains((entry.Kind, entry.IdentityId))).Reverse())
+        foreach (var kind in frozen.GroupBy(entry => entry.Kind))
         {
-            await Remover(entry.Kind).RemoveVersionAsync(entry.VersionId, cancellationToken);
-            if (!heldElsewhere.Contains((entry.Kind, entry.IdentityId))) await Remover(entry.Kind).RemoveIdentityAsync(entry.IdentityId, cancellationToken);
+            VersionCopy[] copies = [.. kind.Select(entry => new VersionCopy(entry.VersionId, current.GetValueOrDefault((entry.Kind, entry.IdentityId))?.VersionId))];
+            await Copier(kind.Key).CopyAsync(copies, liveSnapshotId, cancellationToken);
         }
+
+        await RemoveAsync(current.Values.Where(entry => !restored.Contains((entry.Kind, entry.IdentityId))), HeldOutside(holdings, liveSnapshotId), cancellationToken);
 
         await restores.InsertAsync(
             new SnapshotRestoreRecord { SnapshotRestoreId = ids.NextId(), SnapshotId = snapshotId, RestoredAt = time.GetUtcNow().UtcDateTime, RestoredBy = restoredBy },
@@ -138,17 +137,31 @@ public sealed class SnapshotCommands(
         if (row.IsLive) return LiveSnapshotRefusal(row, "deleted");
 
         var holdings = await index.ReadAsync(cancellationToken);
-        var heldElsewhere = holdings.Where(holding => holding.SnapshotId != snapshotId).Select(holding => (holding.Entry.Kind, holding.Entry.IdentityId)).ToHashSet();
         await snapshots.DeleteAsync(new { SnapshotId = snapshotId }, cancellationToken);
         await restores.DeleteAsync(new { SnapshotId = snapshotId }, cancellationToken);
-        foreach (var entry in SnapshotIndex.Of(holdings, snapshotId).Reverse())
-        {
-            await Remover(entry.Kind).RemoveVersionAsync(entry.VersionId, cancellationToken);
-            if (!heldElsewhere.Contains((entry.Kind, entry.IdentityId))) await Remover(entry.Kind).RemoveIdentityAsync(entry.IdentityId, cancellationToken);
-        }
-
+        await RemoveAsync(SnapshotIndex.Of(holdings, snapshotId), HeldOutside(holdings, snapshotId), cancellationToken);
         await semanticRevision.AdvanceAsync(cancellationToken);
         return null;
+    }
+
+    /// <summary>
+    /// Removes the entries' versions, kind by kind in reverse capture order with one batch per kind, and each entry's identity when no
+    /// other snapshot holds it.
+    /// </summary>
+    private async Task RemoveAsync(IEnumerable<SnapshotEntry> entries, IReadOnlySet<(string Kind, long IdentityId)> heldElsewhere, CancellationToken cancellationToken)
+    {
+        foreach (var kind in entries.Reverse().GroupBy(entry => entry.Kind))
+        {
+            var remover = Remover(kind.Key);
+            await remover.RemoveVersionsAsync([.. kind.Select(entry => entry.VersionId)], cancellationToken);
+            await remover.RemoveIdentitiesAsync([.. kind.Where(entry => !heldElsewhere.Contains((entry.Kind, entry.IdentityId))).Select(entry => entry.IdentityId)], cancellationToken);
+        }
+    }
+
+    /// <summary>The identities some snapshot other than the given one holds a version of.</summary>
+    private static HashSet<(string Kind, long IdentityId)> HeldOutside(IEnumerable<SnapshotHolding> holdings, long snapshotId)
+    {
+        return holdings.Where(holding => holding.SnapshotId != snapshotId).Select(holding => (holding.Entry.Kind, holding.Entry.IdentityId)).ToHashSet();
     }
 
     /// <summary>The tenant's semantic revision as stored now.</summary>

@@ -26,28 +26,22 @@ public sealed class DimensionVersionCopier(
     /// <summary><c>dimension</c>.</summary>
     public string Kind => SnapshotKinds.Dimension;
 
-    /// <summary>Copies a version into a snapshot, as a new version or over another version of the dimension.</summary>
-    /// <param name="versionId">The version to copy.</param>
-    /// <param name="targetSnapshotId">The snapshot the copy belongs to.</param>
-    /// <param name="targetVersionId">The version whose content the copy replaces, or null for a new version.</param>
+    /// <summary>Copies versions into a snapshot, each as a new version or over another version of its dimension.</summary>
+    /// <param name="copies">The versions to copy, each with the version whose content it replaces, if any.</param>
+    /// <param name="targetSnapshotId">The snapshot the copies belong to.</param>
     /// <param name="cancellationToken">Cancels the reads and writes.</param>
-    /// <returns>The copy's id.</returns>
-    public async Task<long> CopyAsync(long versionId, long targetSnapshotId, long? targetVersionId, CancellationToken cancellationToken)
+    /// <returns>The copies' ids.</returns>
+    public async Task<IReadOnlyList<long>> CopyAsync(IReadOnlyList<VersionCopy> copies, long targetSnapshotId, CancellationToken cancellationToken)
     {
-        var source = await versions.GetAsync(new { DimensionVersionId = versionId }, cancellationToken);
-        var copy = source with { DimensionVersionId = targetVersionId ?? ids.NextId(), SnapshotId = targetSnapshotId, CreatedAt = time.GetUtcNow().UtcDateTime };
-        if (targetVersionId is { } target)
-        {
-            await remover.RemoveContentAsync([target], cancellationToken);
-            await versions.UpdateAsync(copy, cancellationToken);
-        }
-        else
-        {
-            await versions.InsertAsync(copy, cancellationToken);
-        }
-
-        await cloner.CloneAsync(versionId, copy.DimensionVersionId, cancellationToken);
-        return copy.DimensionVersionId;
+        var batch = new VersionCopyBatch(copies, ids);
+        var now = time.GetUtcNow().UtcDateTime;
+        var sources = await versions.ListAsync(new { DimensionVersionId = batch.SourceIds }, cancellationToken);
+        await remover.RemoveContentAsync(batch.ReplacedIds, cancellationToken);
+        await versions.InsertManyAsync(
+            [.. sources.Select(source => source with { DimensionVersionId = batch.Targets[source.DimensionVersionId], SnapshotId = targetSnapshotId, CreatedAt = now })],
+            cancellationToken);
+        await cloner.CloneAsync(batch.Targets, cancellationToken);
+        return batch.CopyIds;
     }
 
     /// <summary>

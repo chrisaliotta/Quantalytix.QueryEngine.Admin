@@ -63,7 +63,7 @@ public sealed class MappingCommandsTests
 
         var blocked = await fixture.MappingCommands().DeleteAsync(MappingsFixture.MappingSetId, cancellationToken);
         await fixture.Bindings.DeleteAsync(new { MappingSetId = MappingsFixture.MappingSetId }, cancellationToken);
-        await fixture.MappingRemover().RemoveVersionAsync(MappingsFixture.FrozenMappingVersionId, cancellationToken);
+        await fixture.MappingRemover().RemoveVersionsAsync([MappingsFixture.FrozenMappingVersionId], cancellationToken);
         var deleted = await fixture.MappingCommands().DeleteAsync(MappingsFixture.MappingSetId, cancellationToken);
 
         Assert.Equal(

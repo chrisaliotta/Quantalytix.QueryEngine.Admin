@@ -21,29 +21,26 @@ public sealed class MappingVersionCopier(
     /// <summary><c>mapping_set</c>.</summary>
     public string Kind => SnapshotKinds.MappingSet;
 
-    /// <summary>Copies a version into a snapshot, as a new version or over another version of the mapping set.</summary>
-    /// <param name="versionId">The version to copy.</param>
-    /// <param name="targetSnapshotId">The snapshot the copy belongs to.</param>
-    /// <param name="targetVersionId">The version whose entries the copy replaces, or null for a new version.</param>
+    /// <summary>Copies versions into a snapshot, each as a new version or over another version of its mapping set.</summary>
+    /// <param name="copies">The versions to copy, each with the version whose entries it replaces, if any.</param>
+    /// <param name="targetSnapshotId">The snapshot the copies belong to.</param>
     /// <param name="cancellationToken">Cancels the reads and writes.</param>
-    /// <returns>The copy's id.</returns>
-    public async Task<long> CopyAsync(long versionId, long targetSnapshotId, long? targetVersionId, CancellationToken cancellationToken)
+    /// <returns>The copies' ids.</returns>
+    public async Task<IReadOnlyList<long>> CopyAsync(IReadOnlyList<VersionCopy> copies, long targetSnapshotId, CancellationToken cancellationToken)
     {
-        var source = await versions.GetAsync(new { MappingVersionId = versionId }, cancellationToken);
-        var copy = source with { MappingVersionId = targetVersionId ?? ids.NextId(), SnapshotId = targetSnapshotId, CreatedAt = time.GetUtcNow().UtcDateTime };
-        if (targetVersionId is { } target)
-        {
-            await entries.DeleteAsync(new { MappingVersionId = target }, cancellationToken);
-            await versions.UpdateAsync(copy, cancellationToken);
-        }
-        else
-        {
-            await versions.InsertAsync(copy, cancellationToken);
-        }
+        var batch = new VersionCopyBatch(copies, ids);
+        var now = time.GetUtcNow().UtcDateTime;
+        var sources = await versions.ListAsync(new { MappingVersionId = batch.SourceIds }, cancellationToken);
+        await entries.DeleteAsync(new { MappingVersionId = batch.ReplacedIds }, cancellationToken);
+        await versions.InsertManyAsync(
+            [.. sources.Select(source => source with { MappingVersionId = batch.Targets[source.MappingVersionId], SnapshotId = targetSnapshotId, CreatedAt = now })],
+            cancellationToken);
 
-        var copied = await entries.ListAsync(new { MappingVersionId = versionId }, cancellationToken);
-        await entries.InsertManyAsync([.. copied.Select(entry => entry with { DimensionMappingId = ids.NextId(), MappingVersionId = copy.MappingVersionId })], cancellationToken);
-        return copy.MappingVersionId;
+        var copied = await entries.ListAsync(new { MappingVersionId = batch.SourceIds }, cancellationToken);
+        await entries.InsertManyAsync(
+            [.. copied.Select(entry => entry with { DimensionMappingId = ids.NextId(), MappingVersionId = batch.Targets[entry.MappingVersionId] })],
+            cancellationToken);
+        return batch.CopyIds;
     }
 
     /// <summary>The version's entries, each a source key value and the member key it maps to.</summary>

@@ -74,8 +74,8 @@ public sealed class ModelCommands(
             await holders.FrozenKeysAsync(all.Select(row => row.SnapshotId), cancellationToken));
         if (!check.Allowed) return Refusal.DeleteBlocked(check);
 
-        await remover.RemoveVersionAsync(version.CalculationModelVersionId, cancellationToken);
-        await remover.RemoveIdentityAsync(calculationModelId, cancellationToken);
+        await remover.RemoveVersionsAsync([version.CalculationModelVersionId], cancellationToken);
+        await remover.RemoveIdentitiesAsync([calculationModelId], cancellationToken);
         await semanticRevision.AdvanceAsync(cancellationToken);
         return null;
     }

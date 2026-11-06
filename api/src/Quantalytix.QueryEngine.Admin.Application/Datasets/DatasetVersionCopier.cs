@@ -18,36 +18,32 @@ public sealed class DatasetVersionCopier(
     /// <summary><c>dataset</c>.</summary>
     public string Kind => SnapshotKinds.Dataset;
 
-    /// <summary>Copies a version's settings and content into a snapshot, as a new version or over another version of the dataset.</summary>
-    /// <param name="versionId">The version to copy.</param>
-    /// <param name="targetSnapshotId">The snapshot the copy belongs to.</param>
-    /// <param name="targetVersionId">The version whose content the copy replaces, or null for a new version.</param>
+    /// <summary>Copies versions' settings and content into a snapshot, each as a new version or over another version of its dataset.</summary>
+    /// <param name="copies">The versions to copy, each with the version whose content it replaces, if any.</param>
+    /// <param name="targetSnapshotId">The snapshot the copies belong to.</param>
     /// <param name="cancellationToken">Cancels the reads and writes.</param>
-    /// <returns>The copy's id.</returns>
-    public async Task<long> CopyAsync(long versionId, long targetSnapshotId, long? targetVersionId, CancellationToken cancellationToken)
+    /// <returns>The copies' ids.</returns>
+    public async Task<IReadOnlyList<long>> CopyAsync(IReadOnlyList<VersionCopy> copies, long targetSnapshotId, CancellationToken cancellationToken)
     {
+        var batch = new VersionCopyBatch(copies, ids);
         var remap = new IdRemap(ids);
-        var source = await versions.GetAsync(new { DatasetVersionId = versionId }, cancellationToken);
-        var sourceContent = await content.LoadAsync([versionId], cancellationToken);
-        var copy = source with
-        {
-            DatasetVersionId = targetVersionId ?? ids.NextId(),
-            SnapshotId = targetSnapshotId,
-            DefaultTimeBindingId = remap.MapOptional(source.DefaultTimeBindingId),
-            CreatedAt = time.GetUtcNow().UtcDateTime
-        };
-        if (targetVersionId is { } target)
-        {
-            await content.DeleteAsync([target], cancellationToken);
-            await versions.UpdateAsync(copy, cancellationToken);
-        }
-        else
-        {
-            await versions.InsertAsync(copy, cancellationToken);
-        }
-
-        await content.InsertAsync(Remap(sourceContent, copy.DatasetVersionId, remap), cancellationToken);
-        return copy.DatasetVersionId;
+        var now = time.GetUtcNow().UtcDateTime;
+        var sources = await versions.ListAsync(new { DatasetVersionId = batch.SourceIds }, cancellationToken);
+        var sourceContent = await content.LoadAsync(batch.SourceIds, cancellationToken);
+        await content.DeleteAsync(batch.ReplacedIds, cancellationToken);
+        await versions.InsertManyAsync(
+            [
+                .. sources.Select(source => source with
+                {
+                    DatasetVersionId = batch.Targets[source.DatasetVersionId],
+                    SnapshotId = targetSnapshotId,
+                    DefaultTimeBindingId = remap.MapOptional(source.DefaultTimeBindingId),
+                    CreatedAt = now
+                })
+            ],
+            cancellationToken);
+        await content.InsertAsync(Remap(sourceContent, batch.Targets, remap), cancellationToken);
+        return batch.CopyIds;
     }
 
     /// <summary>
@@ -97,13 +93,13 @@ public sealed class DatasetVersionCopier(
             }));
     }
 
-    /// <summary>The content rows of the copy: new IDs, the new version, and internal references remapped.</summary>
-    private static DatasetVersionContent Remap(DatasetVersionContent source, long versionId, IdRemap remap)
+    /// <summary>The content rows of the copies: new IDs, each row's copied version, and internal references remapped.</summary>
+    private static DatasetVersionContent Remap(DatasetVersionContent source, IReadOnlyDictionary<long, long> targets, IdRemap remap)
     {
         return new DatasetVersionContent
         {
-            Fields = [.. source.Fields.Select(field => field with { FieldId = remap.Map(field.FieldId), DatasetVersionId = versionId })],
-            Grains = [.. source.Grains.Select(grain => grain with { DatasetGrainId = remap.Map(grain.DatasetGrainId), DatasetVersionId = versionId })],
+            Fields = [.. source.Fields.Select(field => field with { FieldId = remap.Map(field.FieldId), DatasetVersionId = targets[field.DatasetVersionId] })],
+            Grains = [.. source.Grains.Select(grain => grain with { DatasetGrainId = remap.Map(grain.DatasetGrainId), DatasetVersionId = targets[grain.DatasetVersionId] })],
             GrainFields =
             [
                 .. source.GrainFields.Select(component => component with
@@ -117,7 +113,7 @@ public sealed class DatasetVersionCopier(
                 .. source.Bindings.Select(binding => binding with
                 {
                     DimensionBindingId = remap.Map(binding.DimensionBindingId),
-                    DatasetVersionId = versionId,
+                    DatasetVersionId = targets[binding.DatasetVersionId],
                     SourceFieldId = remap.MapOptional(binding.SourceFieldId),
                     SourceDimensionBindingId = remap.MapOptional(binding.SourceDimensionBindingId)
                 })
@@ -130,7 +126,7 @@ public sealed class DatasetVersionCopier(
                     IntervalEndFieldId = remap.MapOptional(timeBinding.IntervalEndFieldId)
                 })
             ],
-            Measures = [.. source.Measures.Select(measure => measure with { MeasureId = remap.Map(measure.MeasureId), DatasetVersionId = versionId })],
+            Measures = [.. source.Measures.Select(measure => measure with { MeasureId = remap.Map(measure.MeasureId), DatasetVersionId = targets[measure.DatasetVersionId] })],
             Components =
             [
                 .. source.Components.Select(component => component with

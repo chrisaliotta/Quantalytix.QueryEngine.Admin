@@ -61,8 +61,8 @@ public sealed class BridgeCommands(
         if (snapshot.Surroundings.Owner is { } owner) return BridgeRefusals.OwnedByReport(snapshot.Bridge, owner);
         var check = BridgeDeleteRules.Bridge(snapshot);
         if (!check.Allowed) return Refusal.DeleteBlocked(check);
-        await remover.RemoveVersionAsync(snapshot.VersionId, cancellationToken);
-        await remover.RemoveIdentityAsync(bridgeId, cancellationToken);
+        await remover.RemoveVersionsAsync([snapshot.VersionId], cancellationToken);
+        await remover.RemoveIdentitiesAsync([bridgeId], cancellationToken);
         await semanticRevision.AdvanceAsync(cancellationToken);
         return null;
     }

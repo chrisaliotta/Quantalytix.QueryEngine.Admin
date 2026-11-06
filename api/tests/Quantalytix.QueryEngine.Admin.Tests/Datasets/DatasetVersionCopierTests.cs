@@ -1,5 +1,6 @@
 using Quantalytix.QueryEngine.Admin.Application.Datasets;
 using Quantalytix.QueryEngine.Admin.Application.Metadata;
+using Quantalytix.QueryEngine.Admin.Application.Versioning;
 using Quantalytix.QueryEngine.Admin.Application.Vocabulary;
 using Quantalytix.QueryEngine.Admin.Tests.Support;
 using Xunit;
@@ -188,7 +189,7 @@ public sealed class DatasetVersionCopierTests
         var content = new DatasetVersionContentStore(
             _fields, _grains, _grainFields, _bindings, _timeBindings, _measures, _components, _dependencies, _timePolicies);
         var copier = new DatasetVersionCopier(_versions, content, new SequentialIdGenerator(FirstNewId), TimeProvider.System);
-        var copyId = await copier.CopyAsync(SourceVersionId, SnapshotRows.FrozenId, null, TestContext.Current.CancellationToken);
+        var copyId = (await copier.CopyAsync([new VersionCopy(SourceVersionId, null)], SnapshotRows.FrozenId, TestContext.Current.CancellationToken)).Single();
         return _versions.All.Single(row => row.DatasetVersionId == copyId);
     }
 }

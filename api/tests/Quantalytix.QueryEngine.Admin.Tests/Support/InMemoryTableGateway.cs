@@ -20,7 +20,7 @@ namespace Quantalytix.QueryEngine.Admin.Tests.Support;
 /// <code>
 /// var members = new InMemoryTableGateway&lt;DimensionMemberRecord&gt;(north, south);
 /// var remover = new DimensionVersionRemover(dimensions, roles, versions, levels, members, closure, bands);
-/// await remover.RemoveVersionAsync(north.DimensionVersionId, cancellationToken);
+/// await remover.RemoveVersionsAsync([north.DimensionVersionId], cancellationToken);
 /// Assert.Empty(members.All.Where(row => row.DimensionVersionId == north.DimensionVersionId));
 /// </code>
 /// </example>

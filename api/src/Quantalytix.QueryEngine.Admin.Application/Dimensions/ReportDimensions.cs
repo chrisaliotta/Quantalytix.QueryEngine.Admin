@@ -70,7 +70,7 @@ public sealed class ReportDimensions(
     /// <returns>A task that completes when the dimension is gone.</returns>
     public async Task RemoveAsync(long dimensionId, IReadOnlyList<DimensionVersionRecord> ownVersions, CancellationToken cancellationToken)
     {
-        await remover.RemoveAsync([.. ownVersions.Select(version => version.DimensionVersionId)], cancellationToken);
+        await remover.RemoveVersionsAsync([.. ownVersions.Select(version => version.DimensionVersionId)], cancellationToken);
         await roles.DeleteAsync(new { DimensionId = dimensionId }, cancellationToken);
         await dimensions.DeleteAsync(new { DimensionId = dimensionId }, cancellationToken);
     }

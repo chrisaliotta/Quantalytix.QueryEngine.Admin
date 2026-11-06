@@ -4,7 +4,7 @@ namespace Quantalytix.QueryEngine.Admin.Application.Versioning;
 
 /// <summary>
 /// Gives each source ID of a cloned version one new ID, so references between the cloned rows (a member's parent, a
-/// band's member) point at the clones. Create one per clone operation.
+/// band's member) point at the clones. Create one per clone operation; row ids are unique across versions, so one serves a batch.
 /// </summary>
 public sealed class IdRemap(IIdGenerator ids)
 {
